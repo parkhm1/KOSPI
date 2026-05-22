@@ -4,6 +4,10 @@ from plotly.subplots import make_subplots
 import FinanceDataReader as fdr
 import requests
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+def now_kst():
+    return datetime.now(ZoneInfo("Asia/Seoul"))
 import time
 
 st.set_page_config(page_title="KOSPI 이격도 모니터", page_icon="📈", layout="wide")
@@ -31,7 +35,7 @@ def get_realtime_kospi():
         return None
 
 def is_market_open():
-    now = datetime.now()
+    now = now_kst()
     if now.weekday() >= 5:
         return False
     t = now.hour * 60 + now.minute
@@ -41,7 +45,7 @@ def is_market_open():
 period = st.sidebar.selectbox("조회 기간 (일)", [30, 60, 90, 180, 365], index=2)
 auto_refresh = st.sidebar.checkbox("자동 새로고침 (10초)", value=True)
 st.sidebar.markdown("---")
-st.sidebar.caption(f"마지막 갱신: {datetime.now():%Y-%m-%d %H:%M:%S}")
+st.sidebar.caption(f"마지막 갱신: {now_kst():%Y-%m-%d %H:%M:%S}")
 
 # --- 데이터 로드 ---
 df = get_historical(period)
