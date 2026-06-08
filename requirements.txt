@@ -5,4 +5,4 @@ requests
 pandas
 tzdata
 pykrx
-setuptools
+setuptools<81
