@@ -2,7 +2,6 @@ import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import FinanceDataReader as fdr
-from pykrx import stock
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import time
@@ -15,37 +14,27 @@ def now_kst():
     return datetime.now(ZoneInfo("Asia/Seoul"))
 
 # --- 과거 데이터 (확정된 일별 종가 기반) ---
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600)  # 10분마다 갱신
 def get_historical(today_str, extra_days=100):
+    # today_str을 인자로 받으므로, 날짜가 바뀌면 캐시가 자동으로 새로 갱신됨
     end_dt = datetime.strptime(today_str, "%Y-%m-%d")
-    start_str = (end_dt - timedelta(days=extra_days + 100)).strftime("%Y%m%d")
-    end_str = end_dt.strftime("%Y%m%d")
-    # 한국거래소 공식 데이터 (당일 저녁 반영)
-    df = stock.get_index_ohlcv(start_str, end_str, "1001")  # 1001 = KOSPI
-    df = df.rename(columns={"종가": "종가"})  # 이미 한글 컬럼
+    start = (end_dt - timedelta(days=extra_days + 100)).strftime("%Y-%m-%d")
+    df = fdr.DataReader("KS11", start, today_str)
+    df = df.rename(columns={"Close": "종가"})
     df["MA50"] = df["종가"].rolling(window=50).mean()
     df["이격도"] = (df["종가"] / df["MA50"] - 1) * 100
     return df.dropna()
 
-# --- 장중 실시간 현재값 (있으면 사용, 없으면 무시) ---
+# --- 장중 현재값 (FinanceDataReader) ---
 def get_realtime_kospi():
-    """장중 현재값: pykrx(거래소) 우선, 실패 시 FinanceDataReader로 백업"""
-    today = now_kst().strftime("%Y%m%d")
-    # 1차: pykrx (거래소 장중 지수)
     try:
-        df = stock.get_index_ohlcv(today, today, "1001")
-        if len(df) > 0 and df["종가"].iloc[-1] > 0:
-            return float(df["종가"].iloc[-1])
-    except Exception:
-        pass
-    # 2차: FinanceDataReader 백업
-    try:
-        df = fdr.DataReader("KS11", now_kst().strftime("%Y-%m-%d"))
+        today = now_kst().strftime("%Y-%m-%d")
+        df = fdr.DataReader("KS11", today)
         if len(df) > 0:
             return float(df["Close"].iloc[-1])
+        return None
     except Exception:
-        pass
-    return None
+        return None
 
 def is_market_open():
     now = now_kst()

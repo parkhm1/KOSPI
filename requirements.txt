@@ -4,5 +4,3 @@ finance-datareader
 requests
 pandas
 tzdata
-pykrx
-setuptools<81
